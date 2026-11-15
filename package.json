@@ -1,0 +1,17 @@
+{
+  "name": "codeg-mobile",
+  "version": "0.1.0",
+  "description": "Codeg 移动端封装 - 多服务切换 WebView",
+  "type": "module",
+  "scripts": {
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.2.0"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.12.4"
+  }
+}
