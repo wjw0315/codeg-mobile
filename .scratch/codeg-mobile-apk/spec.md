@@ -55,6 +55,7 @@ codeg 是一个部署在内网的 Web 服务（`http://100.94.107.28:3080/`）�
 ## Testing Decisions
 
 - **UI 设计（2026-11-15 定稿）**：服务页采用「沉浸大卡片」方案——整卡点击即连接，编辑/删除收进卡片右上 ⋯ 底部菜单，添加/编辑共用带把手底部表单（保存并使用/取消），头部「Codeg.」+ ＋ 方形按钮（无 FAB）。三方案原型与对比记录见 `prototype/services-page-design` 分支（`prototype/services-page.html`），用户从 A/B/C 中选定 A。未采用：状态点/最近连接时间（无真实数据源，避免误导）。
+- **Android 点连接死锁（2026-11-15 debuggerd 全栈符号化定位）**：wry 0.57.2 的 Android IPC JNI 入口（`binding.rs::ipc`）在**持有全局 IPC handler 表锁**时同步执行命令；`open_service` 在锁内 `WebviewWindowBuilder::build` → 事件循环线程注册新 webview 的 IPC handler 需同一把锁 → 与持锁等回包的命令线程 ABBA 死锁。症状：点连接无窗口、无报错、invoke 永不返回。修复：命令线程只做校验，`std::thread::spawn` 里建窗（不持 IPC 锁），fire-and-forget（提交 9963fc9）。诊断方法：`adb shell debuggerd -j <pid>` 抓全线程 native 栈 + NDK llvm-symbolizer 对本地未 strip 的 `.so` 符号化（临时注释 profile.strip 重建一次，代码不变则 PC 不变可直接对表）。模拟器页面可达性验证用 `adb reverse tcp:8123 tcp:8123` + 本地 http.server，比 10.0.2.2 NAT 可靠。
 - **首次使用体验**：服务列表为空时前端自动弹出"添加服务"表单（填写名称/地址/token），而不是停留在空列表或报错页。
 - **模拟器验证为主**：使用 Android 模拟器（arm64-v8a 架构，API 35）验证 APK 能正常启动、不闪退。这是最关键的验证——闪退修复的有效性只能通过实际启动确认。
 - **2026-11-15 启动白屏修复实测结果**：① 修复后 APK 启动直接渲染服务页（无 "Failed to request" 报错页）；② 空列表自动弹出"添加服务"表单（screencap 确认 名称/连接地址/Token 三个输入框）；③ 表单填写 test / http://1.2.3.4:3080 / tok123 后点保存，服务卡片正常渲染出 连接/编辑/删除 按钮，证明 `list_services`/`save_service` 在 Android 上读写 `app_config_dir()/services.json` 正常。④ `.so` 哈希校验：`unzip -p apk lib/arm64-v8a/libcodeg_mobile_lib.so | shasum` 与 `target/aarch64-linux-android/release/libcodeg_mobile_lib.so` 一致（custom-protocol 构建）。
