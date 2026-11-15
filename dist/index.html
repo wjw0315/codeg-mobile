@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <title>Codeg</title>
+  <link rel="stylesheet" href="./src/style.css" />
+</head>
+<body>
+  <header class="header">
+    <h1>Codeg</h1>
+  </header>
+
+  <main class="container">
+    <div id="service-list" class="service-list">
+      <div class="loading">加载中...</div>
+    </div>
+  </main>
+
+  <button id="add-btn" class="fab" aria-label="添加服务">+</button>
+
+  <!-- 添加/编辑 模态框 -->
+  <div id="modal" class="modal-overlay hidden">
+    <div class="modal">
+      <h2 id="modal-title">添加服务</h2>
+      <label class="field">
+        <span>名称</span>
+        <input id="f-name" type="text" placeholder="如：内网 codeg" maxlength="30" />
+      </label>
+      <label class="field">
+        <span>连接地址</span>
+        <input id="f-url" type="text" placeholder="http://100.94.107.28:3080" />
+      </label>
+      <label class="field">
+        <span>Token</span>
+        <input id="f-token" type="password" placeholder="Bearer token" />
+      </label>
+      <div class="modal-actions">
+        <button id="modal-cancel" class="btn btn-edit">取消</button>
+        <button id="modal-save" class="btn btn-primary">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
