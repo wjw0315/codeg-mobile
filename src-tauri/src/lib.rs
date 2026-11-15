@@ -120,6 +120,8 @@ fn open_service(app: AppHandle, name: String) -> Result<(), String> {
     Ok(())
 }
 
+// Android/iOS 移动端构建只编译 lib 目标，入口宏必须标在 run() 上才能编进 .so
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
