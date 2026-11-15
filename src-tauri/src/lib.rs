@@ -74,15 +74,22 @@ fn open_service(app: AppHandle, name: String) -> Result<(), String> {
         .services
         .iter()
         .find(|s| s.name == name)
-        .ok_or_else(|| format!("服务不存在: {name}"))?;
+        .ok_or_else(|| format!("服务不存在: {name}"))?
+        .clone();
 
     let url = format!("{}{}", svc.url.trim_end_matches('/'), "/");
     let token = svc.token.clone();
-    let window_label = format!("codeg-{}", name);
+    url.parse::<tauri::Url>().map_err(|e| e.to_string())?;
 
-    // 注入 init script：拦截 fetch/XHR 自动加 Authorization: Bearer 头，兼容 localStorage
-    let init_script = format!(
-        r#"
+    // wry Android 的 ipc JNI 入口在持有全局 IPC handler 表锁时执行命令，
+    // 而建新窗口要在事件循环线程往同一张表注册 handler——直接建窗必死锁。
+    // 挪到普通线程执行，命令线程先返回、先放锁。
+    std::thread::spawn(move || {
+        let window_label = format!("codeg-{}", name);
+
+        // 注入 init script：拦截 fetch/XHR 自动加 Authorization: Bearer 头，兼容 localStorage
+        let init_script = format!(
+            r#"
         (function() {{
             var t = {:?};
             if (!t) return;
@@ -105,17 +112,20 @@ fn open_service(app: AppHandle, name: String) -> Result<(), String> {
             }};
         }})();
         "#,
-        token
-    );
+            token
+        );
 
-    let parsed_url = url.parse::<tauri::Url>().map_err(|e| e.to_string())?;
-    WebviewWindowBuilder::new(&app, &window_label, WebviewUrl::External(parsed_url))
-        .title(&format!("Codeg - {}", svc.name))
-        .inner_size(390.0, 844.0)
-        .resizable(true)
-        .initialization_script(init_script)
-        .build()
-        .map_err(|e| e.to_string())?;
+        let parsed_url = url.parse::<tauri::Url>().expect("url already validated");
+        if let Err(e) = WebviewWindowBuilder::new(&app, &window_label, WebviewUrl::External(parsed_url))
+            .title(&format!("Codeg - {}", name))
+            .inner_size(390.0, 844.0)
+            .resizable(true)
+            .initialization_script(init_script)
+            .build()
+        {
+            eprintln!("open_service: build failed: {e}");
+        }
+    });
 
     Ok(())
 }
