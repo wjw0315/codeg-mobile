@@ -7,38 +7,47 @@
   <link rel="stylesheet" href="./src/style.css" />
 </head>
 <body>
-  <header class="header">
-    <h1>Codeg</h1>
-  </header>
-
-  <main class="container">
-    <div id="service-list" class="service-list">
+  <div class="page">
+    <div class="statusbar-pad"></div>
+    <header class="head">
+      <h1 class="head-title">Codeg<em>.</em></h1>
+      <button id="add-btn" class="add-btn" aria-label="添加服务">＋</button>
+    </header>
+    <main id="service-list" class="cards">
       <div class="loading">加载中...</div>
-    </div>
-  </main>
+    </main>
+  </div>
 
-  <button id="add-btn" class="fab" aria-label="添加服务">+</button>
-
-  <!-- 添加/编辑 模态框 -->
-  <div id="modal" class="modal-overlay hidden">
-    <div class="modal">
-      <h2 id="modal-title">添加服务</h2>
-      <label class="field">
+  <!-- 添加/编辑 底部表单 -->
+  <div id="sheet" class="overlay hidden">
+    <div class="sheet">
+      <div class="grab"></div>
+      <h2 id="sheet-title">添加服务</h2>
+      <label class="fld">
         <span>名称</span>
         <input id="f-name" type="text" placeholder="如：内网 codeg" maxlength="30" />
       </label>
-      <label class="field">
+      <label class="fld">
         <span>连接地址</span>
         <input id="f-url" type="text" placeholder="http://100.94.107.28:3080" />
       </label>
-      <label class="field">
+      <label class="fld">
         <span>Token</span>
         <input id="f-token" type="password" placeholder="Bearer token" />
       </label>
-      <div class="modal-actions">
-        <button id="modal-cancel" class="btn btn-edit">取消</button>
-        <button id="modal-save" class="btn btn-primary">保存</button>
-      </div>
+      <button id="sheet-save" class="cta">保存并使用</button>
+      <button id="sheet-cancel" class="cta ghost">取消</button>
+    </div>
+  </div>
+
+  <!-- ⋯ 操作弹层 -->
+  <div id="menu" class="overlay hidden">
+    <div class="sheet menu-sheet">
+      <div class="grab"></div>
+      <h2 id="menu-name">服务</h2>
+      <button id="menu-edit" class="menu-item">编辑</button>
+      <button id="menu-del" class="menu-item danger">删除</button>
+      <button id="menu-cancel" class="cta ghost">取消</button>
     </div>
   </div>
 

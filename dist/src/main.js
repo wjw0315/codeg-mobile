@@ -1,7 +1,8 @@
 // WebView 无打包器，走 withGlobalTauri 注入的全局 API
 const invoke = window.__TAURI__.core.invoke;
 
-let editingName = null;
+let editingName = null; // null=添加；字符串=编辑
+let menuTarget = null;  // ⋯ 菜单当前指向的服务名
 let toastTimer = null;
 
 function escapeHtml(s) {
@@ -25,58 +26,96 @@ function toast(msg) {
 
 async function loadServices() {
   const container = document.getElementById('service-list');
+  let services;
   try {
-    const services = await invoke('list_services');
-    if (services.length === 0) {
-      container.innerHTML = '<div class="empty">暂无服务，先添加一个服务配置</div>';
-      // 首次使用：直接展示填写服务地址的表单
-      document.getElementById('modal-title').textContent = '添加服务';
-      showModal();
-      return;
-    }
-    container.innerHTML = services.map(s => `
-      <div class="card">
-        <div class="card-info">
-          <div class="card-name">${escapeHtml(s.name)}</div>
-          <div class="card-url">${escapeHtml(s.url)}</div>
-        </div>
-        <div class="card-actions">
-          <button class="btn btn-primary" onclick="openService('${escapeHtml(s.name)}')">连接</button>
-          <button class="btn btn-edit" onclick="editService('${escapeHtml(s.name)}')">编辑</button>
-          <button class="btn btn-del" onclick="deleteService('${escapeHtml(s.name)}')">删除</button>
-        </div>
-      </div>
-    `).join('');
+    services = await invoke('list_services');
   } catch (e) {
     container.innerHTML = '<div class="empty">加载失败：' + escapeHtml(String(e)) + '</div>';
+    return;
   }
+  if (services.length === 0) {
+    container.innerHTML = '<div class="empty">还没有服务配置<br>添加一个即可开始使用</div>';
+    // 首次使用：直接展示填写服务地址的表单
+    openSheet(null);
+    return;
+  }
+  container.innerHTML = services.map(s => `
+    <button class="card" data-conn="${escapeHtml(s.name)}">
+      <div class="card-top">
+        <span class="card-name">${escapeHtml(s.name)}</span>
+        <span class="card-menu" data-menu="${escapeHtml(s.name)}">⋯</span>
+      </div>
+      <span class="card-url">${escapeHtml(s.url)}</span>
+      <div class="card-go"><span class="c">连接 →</span></div>
+    </button>
+  `).join('');
 }
 
-window.openService = async function (name) {
-  try {
-    await invoke('open_service', { name });
-  } catch (e) {
-    toast('打开失败：' + e);
+/* ---------- 表单弹层 ---------- */
+async function openSheet(editName) {
+  editingName = editName;
+  document.getElementById('sheet-title').textContent = editName ? '编辑服务' : '添加服务';
+  document.getElementById('sheet-save').textContent = editName ? '保存' : '保存并使用';
+  if (editName) {
+    try {
+      const list = await invoke('list_services');
+      const s = list.find(x => x.name === editName);
+      if (s) {
+        document.getElementById('f-name').value = s.name;
+        document.getElementById('f-url').value = s.url;
+        document.getElementById('f-token').value = s.token;
+      }
+    } catch (e) { /* 保持空表单 */ }
+  } else {
+    document.getElementById('f-name').value = '';
+    document.getElementById('f-url').value = '';
+    document.getElementById('f-token').value = '';
   }
-};
+  document.getElementById('sheet').classList.remove('hidden');
+  setTimeout(() => document.getElementById('f-name').focus(), 120);
+}
 
-window.editService = function (name) {
-  editingName = name;
-  document.getElementById('modal-title').textContent = '编辑服务';
-  const services = document.querySelectorAll('.card');
-  // 从当前列表找到该服务填充表单
-  invoke('list_services').then(list => {
-    const s = list.find(x => x.name === name);
-    if (s) {
-      document.getElementById('f-name').value = s.name;
-      document.getElementById('f-url').value = s.url;
-      document.getElementById('f-token').value = s.token;
-    }
-  });
-  showModal();
-};
+function hideSheet() {
+  document.getElementById('sheet').classList.add('hidden');
+  editingName = null;
+}
 
-window.deleteService = async function (name) {
+/* ---------- ⋯ 菜单弹层 ---------- */
+function openMenu(name) {
+  menuTarget = name;
+  document.getElementById('menu-name').textContent = name;
+  document.getElementById('menu').classList.remove('hidden');
+}
+function hideMenu() {
+  document.getElementById('menu').classList.add('hidden');
+  menuTarget = null;
+}
+
+/* ---------- 事件 ---------- */
+document.getElementById('service-list').addEventListener('click', e => {
+  const menuBtn = e.target.closest('[data-menu]');
+  if (menuBtn) {
+    e.stopPropagation();
+    openMenu(menuBtn.dataset.menu);
+    return;
+  }
+  const card = e.target.closest('[data-conn]');
+  if (card) invoke('open_service', { name: card.dataset.conn }).catch(err => toast('打开失败：' + err));
+});
+
+document.getElementById('add-btn').addEventListener('click', () => openSheet(null));
+document.getElementById('sheet-cancel').addEventListener('click', hideSheet);
+document.getElementById('sheet').addEventListener('click', e => { if (e.target.id === 'sheet') hideSheet(); });
+
+document.getElementById('menu-edit').addEventListener('click', () => {
+  const name = menuTarget;
+  hideMenu();
+  openSheet(name);
+});
+document.getElementById('menu-del').addEventListener('click', async () => {
+  const name = menuTarget;
+  hideMenu();
+  if (!name) return;
   if (!confirm('确定删除 "' + name + '"？')) return;
   try {
     await invoke('delete_service', { name });
@@ -85,36 +124,11 @@ window.deleteService = async function (name) {
   } catch (e) {
     toast('删除失败：' + e);
   }
-};
-
-function showModal() {
-  document.getElementById('modal').classList.remove('hidden');
-  setTimeout(() => document.getElementById('f-name').focus(), 100);
-}
-
-function hideModal() {
-  document.getElementById('modal').classList.add('hidden');
-  editingName = null;
-  document.getElementById('f-name').value = '';
-  document.getElementById('f-url').value = '';
-  document.getElementById('f-token').value = '';
-}
-
-document.getElementById('add-btn').addEventListener('click', () => {
-  editingName = null;
-  document.getElementById('modal-title').textContent = '添加服务';
-  hideModal();
-  showModal();
-  setTimeout(() => document.getElementById('f-name').focus(), 100);
 });
+document.getElementById('menu-cancel').addEventListener('click', hideMenu);
+document.getElementById('menu').addEventListener('click', e => { if (e.target.id === 'menu') hideMenu(); });
 
-document.getElementById('modal-cancel').addEventListener('click', hideModal);
-
-document.getElementById('modal').addEventListener('click', (e) => {
-  if (e.target.id === 'modal') hideModal();
-});
-
-document.getElementById('modal-save').addEventListener('click', async () => {
+document.getElementById('sheet-save').addEventListener('click', async () => {
   const name = document.getElementById('f-name').value.trim();
   const url = document.getElementById('f-url').value.trim();
   const token = document.getElementById('f-token').value.trim();
@@ -122,11 +136,9 @@ document.getElementById('modal-save').addEventListener('click', async () => {
   if (!url) { toast('请填写连接地址'); return; }
   if (!/^https?:\/\//i.test(url)) { toast('地址需以 http:// 或 https:// 开头'); return; }
   try {
-    await invoke('save_service', {
-      config: { name, url, token }
-    });
+    await invoke('save_service', { config: { name, url, token } });
     toast(editingName ? '已更新' : '已添加');
-    hideModal();
+    hideSheet();
     await loadServices();
   } catch (e) {
     toast('保存失败：' + e);

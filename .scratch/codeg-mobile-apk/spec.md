@@ -54,6 +54,7 @@ codeg 是一个部署在内网的 Web 服务（`http://100.94.107.28:3080/`）�
 
 ## Testing Decisions
 
+- **UI 设计（2026-11-15 定稿）**：服务页采用「沉浸大卡片」方案——整卡点击即连接，编辑/删除收进卡片右上 ⋯ 底部菜单，添加/编辑共用带把手底部表单（保存并使用/取消），头部「Codeg.」+ ＋ 方形按钮（无 FAB）。三方案原型与对比记录见 `prototype/services-page-design` 分支（`prototype/services-page.html`），用户从 A/B/C 中选定 A。未采用：状态点/最近连接时间（无真实数据源，避免误导）。
 - **首次使用体验**：服务列表为空时前端自动弹出"添加服务"表单（填写名称/地址/token），而不是停留在空列表或报错页。
 - **模拟器验证为主**：使用 Android 模拟器（arm64-v8a 架构，API 35）验证 APK 能正常启动、不闪退。这是最关键的验证——闪退修复的有效性只能通过实际启动确认。
 - **2026-11-15 启动白屏修复实测结果**：① 修复后 APK 启动直接渲染服务页（无 "Failed to request" 报错页）；② 空列表自动弹出"添加服务"表单（screencap 确认 名称/连接地址/Token 三个输入框）；③ 表单填写 test / http://1.2.3.4:3080 / tok123 后点保存，服务卡片正常渲染出 连接/编辑/删除 按钮，证明 `list_services`/`save_service` 在 Android 上读写 `app_config_dir()/services.json` 正常。④ `.so` 哈希校验：`unzip -p apk lib/arm64-v8a/libcodeg_mobile_lib.so | shasum` 与 `target/aarch64-linux-android/release/libcodeg_mobile_lib.so` 一致（custom-protocol 构建）。
