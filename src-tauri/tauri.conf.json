@@ -19,7 +19,21 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": null,
+      "capabilities": [
+        {
+          "identifier": "remote-token-access",
+          "description": "Allows remote service pages to fetch the active token and report JS errors back to Rust.",
+          "remote": {
+            "urls": ["http://*", "https://*"]
+          },
+          "windows": ["main"],
+          "permissions": [
+            "allow-get-active-token",
+            "allow-log-js-error"
+          ]
+        }
+      ]
     }
   },
   "bundle": {
